@@ -16,7 +16,7 @@ const uploadOnCloudinary = async (loaclFilePath) => {
             resource_type: "auto"
         })
         //file upload successfully
-        console.log("file uploaded successfully", reponse.url);
+        fs.unlinkSync(loaclFilePath)//remove if successfully upload
         return reponse
     } catch (error) {
         fs.unlinkSync(loaclFilePath) //remove the locally save ulpoad file as the opration failed
