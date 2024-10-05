@@ -1,7 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import jwt from "jsonwebtoken"
@@ -185,10 +185,10 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 })
 
 const getCurrentUser = asyncHandler((req, res) => {
-    return res.status(200).json(200, req.user, "current user")
+    return res.status(200).json(new ApiResponse(200, req.user, "user fetched successfully"));
 })
 
-const updatedAccountDetaisl = asyncHandler(async (req, res) => {
+const updatedAccountDetails = asyncHandler(async (req, res) => {
 
     const { fullname, email } = req.body;
 
@@ -228,6 +228,16 @@ const updatedAvatar = asyncHandler(async (req, res) => {
         throw new ApiError(400, "error while uploading avatar")
 
     }
+    // Extract public ID from the current avatar URL if it exists
+    const currentAvatarUrl = user.avatar.url;
+    const publicId = currentAvatarUrl?.split("/").pop().split(".")[0]; // Extracts the public ID from the URL
+
+    // Delete the current avatar from Cloudinary (if it exists)
+    if (publicId) {
+        await deleteFromCloudinary(publicId);
+    }
+
+
 
     const user = await User.findByIdAndUpdate(
         req.user?._id,
@@ -257,6 +267,14 @@ const updatedCoverImage = asyncHandler(async (req, res) => {
         throw new ApiError(400, "error while uploading avatar")
 
     }
+    // Extract public ID from the current avatar URL if it exists
+    const currentCoverImageUrl = user.coverImage.url;
+    const publicId = currentCoverImageUrl?.split("/").pop().split(".")[0]; // Extracts the public ID from the URL
+
+    // Delete the current avatar from Cloudinary (if it exists)
+    if (publicId) {
+        await deleteFromCloudinary(publicId);
+    }
 
     const user = await User.findByIdAndUpdate(
         req.user?._id,
@@ -283,7 +301,7 @@ export {
     refreshAccessToken,
     changeCurrentPassword,
     getCurrentUser,
-    updatedAccountDetaisl,
+    updatedAccountDetails,
     updatedAvatar,
     updatedCoverImage
 };
