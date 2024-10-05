@@ -23,6 +23,7 @@ router.route("/login").post(loginUser)
 //secured routes
 
 router.route("/logout").post(verifyJWT, logoutUser)
+router.route("/refreshToken").post(refreshAccessToken)//no need middleware coz we have write in controller
 
 export default router
 
