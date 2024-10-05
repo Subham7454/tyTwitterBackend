@@ -67,7 +67,8 @@ UserSchema.methods.isPasswordCorrect = async function (password) {
 }
 
 //token genration
-UserSchema.methods.genrateAcessToken = function () {
+// Access token
+UserSchema.methods.generateAccessToken = function () {
     return jwt.sign(
         {
             _id: this._id,
@@ -75,24 +76,24 @@ UserSchema.methods.genrateAcessToken = function () {
             username: this.username,
             fullname: this.fullname
         },
-        process.env.ACESS_TOKEN_SECRET,
+        process.env.ACCESS_TOKEN_SECRET,  // Note the corrected spelling
         {
-            expiresIn: process.env.ACESS_TOKEN_EXPIRY
+            expiresIn: process.env.ACCESS_TOKEN_EXPIRY // Note the corrected spelling
         }
-    )
-}
+    );
+};
 
-//refresh token
-UserSchema.methods.genrateRefreshToken = function () {
+// Refresh token
+UserSchema.methods.generateRefreshToken = function () {
     return jwt.sign(
         {
             _id: this._id
-
         },
         process.env.REFRESH_TOKEN_SECRET,
         {
             expiresIn: process.env.REFRESH_TOKEN_EXPIRY
         }
-    )
-}
-export const User = mongoose.model("User", UserSchema)
+    );
+};
+
+export const User = mongoose.model("User", UserSchema);
