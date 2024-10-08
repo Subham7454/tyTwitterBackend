@@ -5,7 +5,8 @@ import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import jwt from "jsonwebtoken"
-import { response } from "express";
+
+import mongoose from "mongoose";
 
 // Updated token generation function
 const generateAccessAndRefereshTokens = async (userId) => {
@@ -115,7 +116,7 @@ const loginUser = asyncHandler(async (req, res) => {
 });
 
 const logoutUser = asyncHandler(async (req, res) => {
-    await User.findByIdAndUpdate(req.user._id, { refreshToken: undefined }, { new: true });
+    await User.findByIdAndUpdate(req.user._id, { $unset: { refreshToken: 1 } }, { new: true });
 
     const options = {
         httpOnly: true, // Fix typo
@@ -184,8 +185,14 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, {}, "password updated"))
 })
 
-const getCurrentUser = asyncHandler((req, res) => {
-    return res.status(200).json(new ApiResponse(200, req.user, "user fetched successfully"));
+const getCurrentUser = asyncHandler(async (req, res) => {
+    return res
+        .status(200)
+        .json(new ApiResponse(
+            200,
+            req.user,
+            "User fetched successfully"
+        ))
 })
 
 const updatedAccountDetails = asyncHandler(async (req, res) => {
@@ -294,91 +301,75 @@ const updatedCoverImage = asyncHandler(async (req, res) => {
 })
 
 const getUserChnnelProfile = asyncHandler(async (req, res) => {
-
-    const { username } = req.params
+    const { username } = req.params;
     if (!username?.trim()) {
-        throw new ApiError(400, "username is required");
+        throw new ApiError(400, "Username is required");
     }
 
     const channel = await User.aggregate([
         {
-
             $match: {
-                username: username?.toLowerCase()
-            }
-
+                username: username?.toLowerCase(),
+            },
         },
         {
             $lookup: {
-                from: "subscriptions",//we cpoy it from subscriptions model and rename it to subscriptions becuse in db lower case and plural
+                from: "subscriptions",
                 localField: "_id",
                 foreignField: "channel",
-                as: "subscribers"
-            }
-
+                as: "subscribers",
+            },
         },
-
         {
             $lookup: {
-                from: "subscriptions",//we cpoy it from subscriptions model and rename it to subscriptions becuse in db lower case and plural
+                from: "subscriptions",
                 localField: "_id",
                 foreignField: "subscriber",
-                as: "subscriberedTo"
-            }
-
+                as: "subscribedTo",
+            },
         },
         {
             $addFields: {
-                subscribersCount: { $size: "$subscribers" },//for counting $ becuse it is feild in db
-                subscriberedToCount: { $size: "$subscriberedTo" },
+                subscribersCount: { $size: "$subscribers" },
+                subscribedToCount: { $size: "$subscribedTo" },
                 isSubscribed: {
                     $cond: {
-                        if: {
-                            $in: [mongoose.Types.ObjectId(req.user?._id), "$subscribers"]
-                        },
+                        if: { $in: [new mongoose.Types.ObjectId(req.user?._id), "$subscribers"] },
                         then: true,
-                        else: false
-                    }
-
-                }
+                        else: false,
+                    },
+                },
             },
-
         },
-
         {
             $project: {
                 fullname: 1,
                 username: 1,
                 avatar: 1,
                 subscribersCount: 1,
-                subscriberedToCount: 1,
+                subscribedToCount: 1,
                 isSubscribed: 1,
                 coverImage: 1,
                 email: 1,
-            }
-        }
+            },
+        },
+    ]);
 
-
-    ])
-    if (!channel) {
-        throw new ApiError(404, "channel does not exist ");
-
+    if (!channel || channel.length === 0) {
+        throw new ApiError(404, "Channel does not exist");
     }
 
-    return response
-        .status(200).json(
-            new ApiResponse(200, channel[0], "channel found successfully")
-        )
-
-
-})
+    return res
+        .status(200)
+        .json(new ApiResponse(200, channel[0], "Channel found successfully"));
+});
 
 const getWatchHistory = asyncHandler(async (req, res) => {
     const user = await User.aggregate([
         {
             $match: {
-                _id: new mongoose.Types.ObjectId(req.user._id)//this is forgetting mongo db id
-            }
+                _id: new mongoose.Types.ObjectId(req.user._id),
+            },
         },
         {
             $lookup: {
@@ -388,42 +379,36 @@ const getWatchHistory = asyncHandler(async (req, res) => {
                 as: "watchHistory",
                 pipeline: [
                     {
-
                         $lookup: {
                             from: "users",
                             localField: "owner",
                             foreignField: "_id",
                             as: "owner",
                             pipeline: [
-
                                 {
                                     $project: {
                                         fullname: 1,
                                         username: 1,
-                                        avatar: 1
-                                    }
-                                }
-                            ]
-                        }
+                                        avatar: 1,
+                                    },
+                                },
+                            ],
+                        },
                     },
                     {
                         $addFields: {
-                            owner: {
-                                $first: "$owner"
-                            }
+                            owner: { $first: "$owner" },
+                        },
+                    },
+                ],
+            },
+        },
+    ]);
 
-                        }
-                    }
-                ]
-            }
-        }
-    ])
-
-    return response
-        .status(200).json(
-            new ApiResponse(200, user[0].watchHistory, "watch history found successfully")
-        )
-})
+    return res
+        .status(200)
+        .json(new ApiResponse(200, user[0].watchHistory, "Watch history found successfully"));
+});
 
 
 export {
