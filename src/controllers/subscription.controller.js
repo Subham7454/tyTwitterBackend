@@ -13,7 +13,7 @@ const toggleSubscription = asyncHandler(async (req, res) => {
     //find both subscriber id and channel id
     //if present delete subscription if not present add
     //return resposne
-    const { subscriberId } = req.user._id
+    const subscriberId = req.user._id
 
     if (!channelId || !subscriberId) {
         throw new ApiError(400, "channelId and subscriberId are required")
